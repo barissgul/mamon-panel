@@ -1,24 +1,35 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-
-export interface Anamenu {
-  id: number;
-  anamenu: string;
-  rota: string;
-  ikon?: string;
-  sira: number;
-  yetki_ids?: string;
-  menuler?: Menu[];
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export interface Menu {
   id: number;
   menu: string;
+  anamenu_alt_id: number;
+  rota: string;
+  ikon?: string;
+  sira: number;
+  yetki_ids?: string;
+  durum?: number;
+}
+
+export interface AnamenuAlt {
+  id: number;
+  baslik: string;
   anamenu_id: number;
   rota: string;
   ikon?: string;
   sira: number;
   yetki_ids?: string;
-  anamenu?: Anamenu;
+  durum: number;
+  menuler?: Menu[];
+}
+
+export interface Anamenu {
+  id: number;
+  anamenu: string;
+  ikon?: string;
+  sira: number;
+  yetki_ids?: string;
+  anamenuAltlar?: AnamenuAlt[];
 }
 
 export async function getAnamenuler(): Promise<Anamenu[]> {

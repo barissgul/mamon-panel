@@ -13,10 +13,32 @@ import {
   PiChartLine,
   PiPackage,
   PiStorefront,
+  PiMapPin,
+  PiBuildings,
+  PiCompass,
+  PiAirplaneTilt,
+  PiCar,
+  PiBoat,
+  PiCalendarDots,
+  PiTicket,
+  PiBrowser,
+  PiImage,
+  PiMegaphone,
+  PiChatCircle,
+  PiChats,
+  PiCalendar,
+  PiWind,
+  PiList,
+  PiCreditCard,
+  PiPaintBrush,
+  PiSliders, 
+  PiCircle,
+  PiChartPie,
 } from 'react-icons/pi';
 
 // İkon eşleştirme map'i
 export const iconMap: Record<string, React.ReactElement> = {
+  // Genel İkonlar
   PiHouseLine: <PiHouseLine />,
   PiChartBar: <PiChartBar />,
   PiTable: <PiTable />,
@@ -31,6 +53,31 @@ export const iconMap: Record<string, React.ReactElement> = {
   PiChartLine: <PiChartLine />,
   PiPackage: <PiPackage />,
   PiStorefront: <PiStorefront />,
+  
+  // Seyahat & Otel Yönetimi İkonları
+  PiMapPin: <PiMapPin />,              // Konum
+  PiBuildings: <PiBuildings />,        // Otel
+  PiCompass: <PiCompass />,            // Tur
+  PiAirplaneTilt: <PiAirplaneTilt />,  // Uçak
+  PiCar: <PiCar />,                    // Araba
+  PiBoat: <PiBoat />,                  // Bot & Yat
+  PiCalendarDots: <PiCalendarDots />,  // Etkinlik
+  PiTicket: <PiTicket />,              // Etkinlik (alternatif)
+  
+  // İçerik & Sistem Yönetimi İkonları
+  PiBrowser: <PiBrowser />,            // Sayfa
+  PiImage: <PiImage />,                // Medya
+  PiMegaphone: <PiMegaphone />,        // Duyurular
+  PiChatCircle: <PiChatCircle />,      // Talepler
+  PiChats: <PiChats />,                // Konular          // Kullanıcı Planlama
+  PiWind: <PiWind />,              // Popup
+  PiList: <PiList />,                  // Menüler
+  PiCreditCard: <PiCreditCard />,      // Ödeme Yöntemleri
+  PiPaintBrush: <PiPaintBrush />,      // Tema
+  PiSliders: <PiSliders />,            // Ayarlar
+  PiGearSix: <PiGear />,               // Seçenekler (PiGear kullanıyoruz)
+  PiCircle: <PiCircle />,              // Ayarlar (alternatif)
+  PiChartPie: <PiChartPie />,          // Raporlar
 };
 
 // Varsayılan ikon

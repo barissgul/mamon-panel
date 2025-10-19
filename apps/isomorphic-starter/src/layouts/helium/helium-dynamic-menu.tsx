@@ -43,29 +43,37 @@ function transformToMenuItems(anamenuler: Anamenu[]): MenuItem[] {
   const items: MenuItem[] = [];
 
   anamenuler.forEach((anamenu) => {
-    // Label ekle
+    // Anamenu başlığını label olarak ekle
     items.push({
       name: anamenu.anamenu,
     });
 
-    // Eğer alt menü yoksa, ana menüyü direkt link olarak ekle
-    if (!anamenu.menuler || anamenu.menuler.length === 0) {
-      items.push({
-        name: anamenu.anamenu,
-        href: anamenu.rota,
-        icon: getIconByName(anamenu.ikon),
-      });
-    } else {
-      // Alt menüler varsa dropdown olarak ekle
-      items.push({
-        name: anamenu.anamenu,
-        href: '#',
-        icon: getIconByName(anamenu.ikon),
-        dropdownItems: anamenu.menuler.map((menu) => ({
-          name: menu.menu,
-          href: menu.rota,
-        })),
-      });
+    // Anamenu altındaki anamenuAltları işle
+    if (anamenu.anamenuAltlar && anamenu.anamenuAltlar.length > 0) {
+      anamenu.anamenuAltlar
+        .filter((anamenuAlt) => anamenuAlt.durum === 1) // Sadece aktif olanları göster
+        .forEach((anamenuAlt) => {
+          // Eğer anamenuAlt'ın altında menuler varsa dropdown, yoksa direkt link
+          if (anamenuAlt.menuler && anamenuAlt.menuler.length > 0) {
+            // Alt menüler varsa dropdown
+            items.push({
+              name: anamenuAlt.baslik,
+              href: '#',
+              icon: getIconByName(anamenuAlt.ikon),
+              dropdownItems: anamenuAlt.menuler.map((menu) => ({
+                name: menu.menu,
+                href: menu.rota,
+              })),
+            });
+          } else {
+            // Alt menü yoksa anamenuAlt'ı direkt link olarak ekle
+            items.push({
+              name: anamenuAlt.baslik,
+              href: anamenuAlt.rota,
+              icon: getIconByName(anamenuAlt.ikon),
+            });
+          }
+        });
     }
   });
 
