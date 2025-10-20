@@ -119,6 +119,18 @@ export const routes = {
   notFound: "/not-found",
   maintenance: "/maintenance",
   blank: "/blank",
+  otel: {
+    otelOzellikler: "/otel/otel-ozellikler",
+    odaOzellikler: "/otel/oda-ozellikler",
+    otelListesi: "/otel/otel-listesi",
+    yeniOtel: "/otel/yeni-otel",
+    otelDetay: (id: string | number) => `/otel/${id}`,
+    otelDuzenle: (id: string | number) => `/otel/${id}/duzenle`,
+  },
+  secenekler: {
+    dilYonetimi: "/secenekler/dil-yonetimi",
+    ceviriYonetimi: "/secenekler/ceviri-yonetimi",
+  },
   auth: {
     signUp1: "/auth/sign-up-1",
     signUp2: "/auth/sign-up-2",

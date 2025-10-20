@@ -12,8 +12,8 @@ import { loginSchema, LoginSchema } from '@/app/validasyon/giris-sema';
 import toast from 'react-hot-toast';
 
 const initialValues: LoginSchema = {
-  email: 'barisgul',
-  password: '123456',
+  email: 'admin',
+  password: 'admin123',
   rememberMe: true,
 };
 

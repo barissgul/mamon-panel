@@ -20,14 +20,20 @@ export const authOptions: NextAuthOptions = {
         ...session,
         user: {
           ...session.user,
-          id: token.idToken as string,
+          id: token.id as string,
+          kullanici_adi: token.kullanici_adi as string,
+          rol: token.rol as string,
         },
+        accessToken: token.accessToken as string,
       };
     },
     async jwt({ token, user }) {
       if (user) {
-        // return user as JWT
-        token.user = user;
+        // Panel kullanıcı bilgilerini token'a ekle
+        token.id = user.id;
+        token.kullanici_adi = (user as any).kullanici_adi;
+        token.rol = (user as any).rol;
+        token.accessToken = (user as any).accessToken;
       }
       return token;
     },
@@ -58,8 +64,8 @@ export const authOptions: NextAuthOptions = {
         try {
           const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
           
-          // API'ye login isteği gönder
-          const response = await fetch(`${API_URL}/kullanicilar/login`, {
+          // Panel kullanıcı girişi için API'ye login isteği gönder
+          const response = await fetch(`${API_URL}/auth/login-panel-user`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -71,17 +77,23 @@ export const authOptions: NextAuthOptions = {
           });
 
           if (!response.ok) {
+            console.error('Login başarısız:', response.status, response.statusText);
             return null;
           }
 
-          const user = await response.json();
+          const data = await response.json();
           
-          if (user) {
+          if (data && data.kullanici) {
+            // Token'ı da saklamak için
+            const user = data.kullanici;
+            
             return {
-              id: user.id,
+              id: user.id.toString(),
               email: user.email,
               name: `${user.ad} ${user.soyad}`,
               kullanici_adi: user.kullanici_adi,
+              rol: user.rol,
+              accessToken: data.access_token,
             };
           }
           
