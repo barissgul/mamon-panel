@@ -309,3 +309,11 @@ export default function DilYonetimiPage() {
   );
 }
 
+
+
+
+
+
+
+
+

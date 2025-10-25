@@ -142,3 +142,11 @@ export async function deleteOdaTipi(id: number): Promise<void> {
   }
 }
 
+
+
+
+
+
+
+
+

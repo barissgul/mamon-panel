@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      react-zoom-pan-pinch:
+        specifier: ^3.7.0
+        version: 3.7.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
     devDependencies:
       eslint:
         specifier: 9.23.0

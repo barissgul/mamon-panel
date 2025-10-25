@@ -35,6 +35,32 @@ export interface UpdateCeviriDto {
   durum?: number;
 }
 
+export interface CeviriGrouped {
+  anahtar: string;
+  kategori?: string;
+  aciklama?: string;
+  durum: number;
+  diller: {
+    [dilKod: string]: {
+      id: number;
+      dil_id: number;
+      deger: string;
+      dil: {
+        id: number;
+        kod: string;
+        ad: string;
+      };
+    };
+  };
+}
+
+export interface UpdateCeviriGroupDto {
+  kategori?: string;
+  aciklama?: string;
+  durum?: number;
+  ceviriler: { dil_id: number; deger: string }[];
+}
+
 // Tüm çevirileri getir
 export async function getCeviriler(): Promise<Ceviri[]> {
   const response = await fetch(`${API_URL}/ceviriler`);
@@ -183,4 +209,72 @@ export async function deleteCeviri(id: number): Promise<void> {
     throw new Error(error.message || 'Çeviri silinemedi');
   }
 }
+
+// Gruplanmış çevirileri getir (anahtar bazlı)
+export async function getCevirilerGrouped(): Promise<CeviriGrouped[]> {
+  const response = await fetch(`${API_URL}/ceviriler/grouped`);
+  if (!response.ok) {
+    throw new Error('Gruplanmış çeviriler yüklenemedi');
+  }
+  return response.json();
+}
+
+// Tüm benzersiz anahtarları getir
+export async function getAllKeys(): Promise<string[]> {
+  const response = await fetch(`${API_URL}/ceviriler/keys/all`);
+  if (!response.ok) {
+    throw new Error('Anahtarlar yüklenemedi');
+  }
+  return response.json();
+}
+
+// Tüm kategorileri getir
+export async function getAllKategoriler(): Promise<string[]> {
+  const response = await fetch(`${API_URL}/ceviriler/kategoriler/all`);
+  if (!response.ok) {
+    throw new Error('Kategoriler yüklenemedi');
+  }
+  return response.json();
+}
+
+// Bir anahtar için tüm dillerdeki çevirileri güncelle
+export async function updateCeviriGroup(
+  anahtar: string,
+  data: UpdateCeviriGroupDto
+): Promise<Ceviri[]> {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_URL}/ceviriler/group/${encodeURIComponent(anahtar)}`, {
+    method: 'PATCH',
+    headers: {
+      ...headers,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Çeviriler güncellenemedi');
+  }
+
+  return response.json();
+}
+
+// Bir anahtara ait tüm dillerdeki çevirileri sil
+export async function deleteCeviriByAnahtar(anahtar: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_URL}/ceviriler/group/${encodeURIComponent(anahtar)}`, {
+    method: 'DELETE',
+    headers,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Çeviriler silinemedi');
+  }
+}
+
+
+
+
 

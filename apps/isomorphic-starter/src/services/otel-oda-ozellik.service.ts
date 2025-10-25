@@ -154,3 +154,11 @@ export async function deleteOtelOdaOzellik(id: number): Promise<void> {
   }
 }
 
+
+
+
+
+
+
+
+

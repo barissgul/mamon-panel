@@ -10,6 +10,13 @@ import {
   OtelOzellik,
 } from '@/services/otel-ozellik.service';
 import { getAuthHeaders } from '@/services/api.config';
+import {
+  generateMultipleOtelContent,
+  generateOtelContent,
+  improveText,
+  ContentType,
+} from '@/services/ai.service';
+import { PiSparkle, PiMagicWandBold } from 'react-icons/pi';
 
 const yildizSecenekleri = [
   { value: '5', label: '5 Yıldız' },
@@ -26,6 +33,7 @@ export default function OtelDuzenlePage() {
   
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState(false);
   const [ozellikler, setOzellikler] = useState<OtelOzellik[]>([]);
   const [secilenOzellikler, setSecilenOzellikler] = useState<number[]>([]);
   const [gorseller, setGorseller] = useState<any[]>([]);
@@ -128,6 +136,180 @@ export default function OtelDuzenlePage() {
       toast.error('Otel güncellenemedi');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // AI ile kısa açıklama oluştur
+  const handleGenerateKisaAciklama = async () => {
+    if (!formData.ad) {
+      toast.error('Lütfen önce otel adını girin');
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      toast.loading('AI içerik oluşturuluyor...', { id: 'ai-loading' });
+      
+      const content = await generateOtelContent({
+        otelAdi: formData.ad,
+        yildiz: formData.yildiz || 5,
+        konsept: formData.konsept,
+        sehir: formData.sehir,
+        bolge: formData.bolge,
+        contentType: ContentType.KISA_ACIKLAMA,
+      });
+
+      setFormData({
+        ...formData,
+        detay: {
+          ...formData.detay,
+          kisa_aciklama: content,
+        },
+      });
+
+      toast.success('Kısa açıklama AI ile oluşturuldu!', { id: 'ai-loading' });
+    } catch (error) {
+      toast.error('AI içerik oluşturulamadı', { id: 'ai-loading' });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // AI ile uzun açıklama oluştur
+  const handleGenerateUzunAciklama = async () => {
+    if (!formData.ad) {
+      toast.error('Lütfen önce otel adını girin');
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      toast.loading('AI içerik oluşturuluyor...', { id: 'ai-loading' });
+      
+      const content = await generateOtelContent({
+        otelAdi: formData.ad,
+        yildiz: formData.yildiz || 5,
+        konsept: formData.konsept,
+        sehir: formData.sehir,
+        bolge: formData.bolge,
+        contentType: ContentType.UZUN_ACIKLAMA,
+      });
+
+      setFormData({
+        ...formData,
+        detay: {
+          ...formData.detay,
+          uzun_aciklama: content,
+        },
+      });
+
+      toast.success('Uzun açıklama AI ile oluşturuldu!', { id: 'ai-loading' });
+    } catch (error) {
+      toast.error('AI içerik oluşturulamadı', { id: 'ai-loading' });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // AI ile her iki açıklamayı da oluştur
+  const handleGenerateAllDescriptions = async () => {
+    if (!formData.ad) {
+      toast.error('Lütfen önce otel adını girin');
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      toast.loading('AI içerikler oluşturuluyor...', { id: 'ai-loading' });
+      
+      const { kisaAciklama, uzunAciklama } = await generateMultipleOtelContent({
+        otelAdi: formData.ad,
+        yildiz: formData.yildiz || 5,
+        konsept: formData.konsept,
+        sehir: formData.sehir,
+        bolge: formData.bolge,
+      });
+
+      setFormData({
+        ...formData,
+        detay: {
+          ...formData.detay,
+          kisa_aciklama: kisaAciklama,
+          uzun_aciklama: uzunAciklama,
+        },
+      });
+
+      toast.success('Tüm açıklamalar AI ile oluşturuldu!', { id: 'ai-loading' });
+    } catch (error) {
+      toast.error('AI içerik oluşturulamadı', { id: 'ai-loading' });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // Mevcut metni AI ile iyileştir
+  const handleImproveKisaAciklama = async () => {
+    const currentText = formData.detay?.kisa_aciklama;
+    if (!currentText || currentText.trim() === '') {
+      toast.error('İyileştirilecek metin bulunamadı');
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      toast.loading('Metin iyileştiriliyor...', { id: 'ai-loading' });
+      
+      const improvedText = await improveText(
+        currentText,
+        'daha çekici ve satış odaklı'
+      );
+
+      setFormData({
+        ...formData,
+        detay: {
+          ...formData.detay,
+          kisa_aciklama: improvedText,
+        },
+      });
+
+      toast.success('Metin iyileştirildi!', { id: 'ai-loading' });
+    } catch (error) {
+      toast.error('Metin iyileştirilemedi', { id: 'ai-loading' });
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // Uzun açıklamayı iyileştir
+  const handleImproveUzunAciklama = async () => {
+    const currentText = formData.detay?.uzun_aciklama;
+    if (!currentText || currentText.trim() === '') {
+      toast.error('İyileştirilecek metin bulunamadı');
+      return;
+    }
+
+    try {
+      setAiLoading(true);
+      toast.loading('Metin iyileştiriliyor...', { id: 'ai-loading' });
+      
+      const improvedText = await improveText(
+        currentText,
+        'daha profesyonel, detaylı ve SEO uyumlu'
+      );
+
+      setFormData({
+        ...formData,
+        detay: {
+          ...formData.detay,
+          uzun_aciklama: improvedText,
+        },
+      });
+
+      toast.success('Metin iyileştirildi!', { id: 'ai-loading' });
+    } catch (error) {
+      toast.error('Metin iyileştirilemedi', { id: 'ai-loading' });
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -288,41 +470,113 @@ export default function OtelDuzenlePage() {
 
           {/* Otel Detayları */}
           <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <Text className="text-lg font-semibold mb-4">Otel Detayları</Text>
+            <div className="flex items-center justify-between mb-4">
+              <Text className="text-lg font-semibold">Otel Detayları</Text>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleGenerateAllDescriptions}
+                disabled={aiLoading || !formData.ad}
+                className="flex items-center gap-2"
+              >
+                <PiSparkle className="h-4 w-4" />
+                Tüm Açıklamaları AI ile Oluştur
+              </Button>
+            </div>
+            
             <div className="space-y-4">
-              <Textarea
-                label="Kısa Açıklama"
-                placeholder="Otel hakkında kısa bilgi..."
-                value={formData.detay?.kisa_aciklama}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    detay: {
-                      ...formData.detay,
-                      kisa_aciklama: e.target.value,
-                    },
-                  })
-                }
-                rows={2}
-                className="[&>label>span]:font-medium"
-              />
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">Kısa Açıklama</label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="flat"
+                      onClick={handleGenerateKisaAciklama}
+                      disabled={aiLoading || !formData.ad}
+                      className="flex items-center gap-1 text-xs"
+                    >
+                      <PiSparkle className="h-3 w-3" />
+                      AI ile Oluştur
+                    </Button>
+                    {formData.detay?.kisa_aciklama && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="flat"
+                        onClick={handleImproveKisaAciklama}
+                        disabled={aiLoading}
+                        className="flex items-center gap-1 text-xs"
+                      >
+                        <PiMagicWandBold className="h-3 w-3" />
+                        İyileştir
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <Textarea
+                  placeholder="Otel hakkında kısa bilgi..."
+                  value={formData.detay?.kisa_aciklama}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      detay: {
+                        ...formData.detay,
+                        kisa_aciklama: e.target.value,
+                      },
+                    })
+                  }
+                  rows={3}
+                />
+              </div>
 
-              <Textarea
-                label="Uzun Açıklama"
-                placeholder="Otel hakkında detaylı bilgi..."
-                value={formData.detay?.uzun_aciklama}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    detay: {
-                      ...formData.detay,
-                      uzun_aciklama: e.target.value,
-                    },
-                  })
-                }
-                rows={5}
-                className="[&>label>span]:font-medium"
-              />
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium">Uzun Açıklama</label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="flat"
+                      onClick={handleGenerateUzunAciklama}
+                      disabled={aiLoading || !formData.ad}
+                      className="flex items-center gap-1 text-xs"
+                    >
+                      <PiSparkle className="h-3 w-3" />
+                      AI ile Oluştur
+                    </Button>
+                    {formData.detay?.uzun_aciklama && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="flat"
+                        onClick={handleImproveUzunAciklama}
+                        disabled={aiLoading}
+                        className="flex items-center gap-1 text-xs"
+                      >
+                        <PiMagicWandBold className="h-3 w-3" />
+                        İyileştir
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <Textarea
+                  placeholder="Otel hakkında detaylı bilgi..."
+                  value={formData.detay?.uzun_aciklama}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      detay: {
+                        ...formData.detay,
+                        uzun_aciklama: e.target.value,
+                      },
+                    })
+                  }
+                  rows={6}
+                />
+              </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Input

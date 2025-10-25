@@ -3,107 +3,96 @@
 import { useState, useEffect } from 'react';
 import { Button, Input, Text, Textarea, Modal, Select } from 'rizzui';
 import toast from 'react-hot-toast';
-import { PiPencilSimpleBold, PiTrashBold, PiPlusBold, PiCopyBold } from 'react-icons/pi';
+import { PiPencilSimpleBold, PiTrashBold, PiPlusBold } from 'react-icons/pi';
 import {
-  getCevirilerByDilId,
-  createCeviri,
-  updateCeviri,
-  deleteCeviri,
-  getKategorilerByDilId,
-  Ceviri,
-  CreateCeviriDto,
+  getCevirilerGrouped,
+  updateCeviriGroup,
+  deleteCeviriByAnahtar,
+  getAllKategoriler,
+  CeviriGrouped,
+  UpdateCeviriGroupDto,
 } from '@/services/ceviri.service';
 import { getDiller, Dil } from '@/services/dil.service';
 
 export default function CeviriYonetimiPage() {
   const [diller, setDiller] = useState<Dil[]>([]);
-  const [selectedDilId, setSelectedDilId] = useState<number | null>(null);
-  const [ceviriler, setCeviriler] = useState<Ceviri[]>([]);
+  const [ceviriler, setCeviriler] = useState<CeviriGrouped[]>([]);
   const [kategoriler, setKategoriler] = useState<string[]>([]);
   const [selectedKategori, setSelectedKategori] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [selectedCeviri, setSelectedCeviri] = useState<Ceviri | null>(null);
+  const [selectedCeviri, setSelectedCeviri] = useState<CeviriGrouped | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState<CreateCeviriDto>({
-    dil_id: 0,
+  const [formData, setFormData] = useState<{
+    anahtar: string;
+    kategori: string;
+    aciklama: string;
+    durum: number;
+    ceviriler: { [dilId: number]: string };
+  }>({
     anahtar: '',
-    deger: '',
     kategori: '',
     aciklama: '',
     durum: 1,
+    ceviriler: {},
   });
 
   useEffect(() => {
-    loadDiller();
+    loadData();
   }, []);
 
-  useEffect(() => {
-    if (selectedDilId) {
-      loadCeviriler();
-      loadKategoriler();
-    }
-  }, [selectedDilId]);
-
-  const loadDiller = async () => {
-    try {
-      const data = await getDiller();
-      setDiller(data);
-      if (data.length > 0) {
-        const varsayilan = data.find((d) => d.varsayilan);
-        setSelectedDilId(varsayilan?.id || data[0].id);
-      }
-    } catch (error) {
-      toast.error('Diller yüklenemedi');
-    }
-  };
-
-  const loadCeviriler = async () => {
-    if (!selectedDilId) return;
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await getCevirilerByDilId(selectedDilId);
-      setCeviriler(data);
+      const [dillerData, cevirilerData, kategorilerData] = await Promise.all([
+        getDiller(),
+        getCevirilerGrouped(),
+        getAllKategoriler(),
+      ]);
+      setDiller(dillerData.filter((d) => d.durum === 1));
+      setCeviriler(cevirilerData);
+      setKategoriler(kategorilerData);
     } catch (error) {
-      toast.error('Çeviriler yüklenemedi');
+      toast.error('Veriler yüklenemedi');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadKategoriler = async () => {
-    if (!selectedDilId) return;
-    try {
-      const data = await getKategorilerByDilId(selectedDilId);
-      setKategoriler(data);
-    } catch (error) {
-      console.error('Kategoriler yüklenemedi:', error);
-    }
-  };
-
-  const handleOpenModal = (ceviri?: Ceviri) => {
+  const handleOpenModal = (ceviri?: CeviriGrouped) => {
     if (ceviri) {
       setEditMode(true);
       setSelectedCeviri(ceviri);
+
+      const cevirilerObj: { [dilId: number]: string } = {};
+      diller.forEach((dil) => {
+        const dilCeviri = ceviri.diller[dil.kod];
+        cevirilerObj[dil.id] = dilCeviri?.deger || '';
+      });
+
       setFormData({
-        dil_id: ceviri.dil_id,
         anahtar: ceviri.anahtar,
-        deger: ceviri.deger,
         kategori: ceviri.kategori || '',
         aciklama: ceviri.aciklama || '',
         durum: ceviri.durum,
+        ceviriler: cevirilerObj,
       });
     } else {
       setEditMode(false);
       setSelectedCeviri(null);
+
+      const cevirilerObj: { [dilId: number]: string } = {};
+      diller.forEach((dil) => {
+        cevirilerObj[dil.id] = '';
+      });
+
       setFormData({
-        dil_id: selectedDilId || 0,
         anahtar: '',
-        deger: '',
         kategori: '',
         aciklama: '',
         durum: 1,
+        ceviriler: cevirilerObj,
       });
     }
     setModalOpen(true);
@@ -116,17 +105,38 @@ export default function CeviriYonetimiPage() {
   };
 
   const handleSubmit = async () => {
+    if (!formData.anahtar.trim()) {
+      toast.error('Anahtar kelime boş olamaz');
+      return;
+    }
+
+    // En az bir dilin dolu olması gerekiyor
+    const hasAtLeastOneTranslation = Object.values(formData.ceviriler).some(
+      (val) => val.trim() !== ''
+    );
+    if (!hasAtLeastOneTranslation) {
+      toast.error('En az bir dil için çeviri girmelisiniz');
+      return;
+    }
+
     try {
       setLoading(true);
-      if (editMode && selectedCeviri) {
-        await updateCeviri(selectedCeviri.id, formData);
-        toast.success('Çeviri güncellendi');
-      } else {
-        await createCeviri(formData);
-        toast.success('Çeviri eklendi');
-      }
-      await loadCeviriler();
-      await loadKategoriler();
+
+      const updateData: UpdateCeviriGroupDto = {
+        kategori: formData.kategori,
+        aciklama: formData.aciklama,
+        durum: formData.durum,
+        ceviriler: Object.entries(formData.ceviriler)
+          .filter(([_, deger]) => deger.trim() !== '')
+          .map(([dil_id, deger]) => ({
+            dil_id: parseInt(dil_id),
+            deger: deger.trim(),
+          })),
+      };
+
+      await updateCeviriGroup(formData.anahtar, updateData);
+      toast.success(editMode ? 'Çeviriler güncellendi' : 'Çeviriler eklendi');
+      await loadData();
       handleCloseModal();
     } catch (error: any) {
       toast.error(error.message || 'İşlem başarısız');
@@ -135,14 +145,13 @@ export default function CeviriYonetimiPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Bu çeviriyi silmek istediğinizden emin misiniz?')) return;
+  const handleDelete = async (anahtar: string) => {
+    if (!confirm('Bu çeviriyi tüm dillerden silmek istediğinizden emin misiniz?')) return;
 
     try {
-      await deleteCeviri(id);
+      await deleteCeviriByAnahtar(anahtar);
       toast.success('Çeviri silindi');
-      await loadCeviriler();
-      await loadKategoriler();
+      await loadData();
     } catch (error: any) {
       toast.error(error.message || 'Çeviri silinemedi');
     }
@@ -154,7 +163,9 @@ export default function CeviriYonetimiPage() {
     const matchesSearch =
       !searchTerm ||
       ceviri.anahtar.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      ceviri.deger.toLowerCase().includes(searchTerm.toLowerCase());
+      Object.values(ceviri.diller).some((d) =>
+        d.deger.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     return matchesKategori && matchesSearch;
   });
 
@@ -165,11 +176,6 @@ export default function CeviriYonetimiPage() {
       </div>
     );
   }
-
-  const dilSecenekleri = diller.map((dil) => ({
-    value: dil.id.toString(),
-    label: `${dil.ad} (${dil.kod.toUpperCase()})`,
-  }));
 
   const kategoriSecenekleri = [
     { value: 'all', label: 'Tüm Kategoriler' },
@@ -182,10 +188,10 @@ export default function CeviriYonetimiPage() {
         <div>
           <Text className="text-2xl font-bold">Çeviri Yönetimi</Text>
           <Text className="text-gray-500 mt-1">
-            Sistem çevirilerini dil bazında yönetin
+            Anahtar kelime bazlı tüm dilleri tek satırda yönetin
           </Text>
         </div>
-        <Button onClick={() => handleOpenModal()} className="gap-2" disabled={!selectedDilId}>
+        <Button onClick={() => handleOpenModal()} className="gap-2">
           <PiPlusBold className="w-4 h-4" />
           Yeni Çeviri Ekle
         </Button>
@@ -193,15 +199,7 @@ export default function CeviriYonetimiPage() {
 
       {/* Filtreler */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Select
-            label="Dil Seçin"
-            value={selectedDilId?.toString()}
-            options={dilSecenekleri}
-            onChange={(value) => setSelectedDilId(parseInt((value as any).value))}
-            size="lg"
-          />
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Select
             label="Kategori"
             value={selectedKategori}
@@ -212,7 +210,7 @@ export default function CeviriYonetimiPage() {
 
           <Input
             label="Ara"
-            placeholder="Anahtar veya değer ara..."
+            placeholder="Anahtar kelime veya çeviri ara..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             size="lg"
@@ -223,14 +221,12 @@ export default function CeviriYonetimiPage() {
       {/* İstatistikler */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <Text className="text-sm text-gray-500">Toplam Çeviri</Text>
+          <Text className="text-sm text-gray-500">Toplam Anahtar Kelime</Text>
           <Text className="text-2xl font-bold mt-1">{ceviriler.length}</Text>
         </div>
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <Text className="text-sm text-gray-500">Aktif Çeviri</Text>
-          <Text className="text-2xl font-bold mt-1">
-            {ceviriler.filter((c) => c.durum === 1).length}
-          </Text>
+          <Text className="text-sm text-gray-500">Aktif Dil</Text>
+          <Text className="text-2xl font-bold mt-1">{diller.length}</Text>
         </div>
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <Text className="text-sm text-gray-500">Kategori Sayısı</Text>
@@ -244,17 +240,19 @@ export default function CeviriYonetimiPage() {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Anahtar
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
+                  Anahtar Kelime
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Değer
-                </th>
+                {diller.map((dil) => (
+                  <th
+                    key={dil.id}
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    {dil.ad} ({dil.kod.toUpperCase()})
+                  </th>
+                ))}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Kategori
-                </th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Durum
                 </th>
                 <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                   İşlemler
@@ -264,7 +262,10 @@ export default function CeviriYonetimiPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredCeviriler.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                  <td
+                    colSpan={diller.length + 3}
+                    className="px-6 py-4 text-center text-gray-500"
+                  >
                     {searchTerm || selectedKategori !== 'all'
                       ? 'Arama sonucu bulunamadı'
                       : 'Henüz çeviri eklenmemiş'}
@@ -272,18 +273,27 @@ export default function CeviriYonetimiPage() {
                 </tr>
               ) : (
                 filteredCeviriler.map((ceviri) => (
-                  <tr key={ceviri.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <Text className="font-medium text-gray-900 font-mono text-sm">
+                  <tr key={ceviri.anahtar} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 sticky left-0 bg-white z-10">
+                      <Text className="font-bold text-gray-900 font-mono text-sm">
                         {ceviri.anahtar}
                       </Text>
                       {ceviri.aciklama && (
                         <Text className="text-xs text-gray-500 mt-1">{ceviri.aciklama}</Text>
                       )}
                     </td>
-                    <td className="px-6 py-4">
-                      <Text className="text-gray-900">{ceviri.deger}</Text>
-                    </td>
+                    {diller.map((dil) => {
+                      const dilCeviri = ceviri.diller[dil.kod];
+                      return (
+                        <td key={dil.id} className="px-6 py-4">
+                          {dilCeviri ? (
+                            <Text className="text-gray-900">{dilCeviri.deger}</Text>
+                          ) : (
+                            <Text className="text-gray-400 italic text-sm">Çeviri yok</Text>
+                          )}
+                        </td>
+                      );
+                    })}
                     <td className="px-6 py-4 whitespace-nowrap">
                       {ceviri.kategori && (
                         <span className="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -292,30 +302,7 @@ export default function CeviriYonetimiPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span
-                        className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          ceviri.durum === 1
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}
-                      >
-                        {ceviri.durum === 1 ? 'Aktif' : 'Pasif'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            navigator.clipboard.writeText(ceviri.anahtar);
-                            toast.success('Anahtar kopyalandı');
-                          }}
-                          className="p-2"
-                          title="Anahtarı kopyala"
-                        >
-                          <PiCopyBold className="w-4 h-4" />
-                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
@@ -328,7 +315,7 @@ export default function CeviriYonetimiPage() {
                           size="sm"
                           variant="flat"
                           color="danger"
-                          onClick={() => handleDelete(ceviri.id)}
+                          onClick={() => handleDelete(ceviri.anahtar)}
                           className="p-2"
                         >
                           <PiTrashBold className="w-4 h-4" />
@@ -344,7 +331,7 @@ export default function CeviriYonetimiPage() {
       </div>
 
       {/* Modal */}
-      <Modal isOpen={modalOpen} onClose={handleCloseModal} size="lg">
+      <Modal isOpen={modalOpen} onClose={handleCloseModal} size="xl">
         <div className="p-6">
           <Text className="text-xl font-bold mb-6">
             {editMode ? 'Çeviri Düzenle' : 'Yeni Çeviri Ekle'}
@@ -352,31 +339,27 @@ export default function CeviriYonetimiPage() {
 
           <div className="space-y-4">
             <Input
-              label="Anahtar"
-              placeholder="home.welcome, common.search vb."
+              label="Anahtar Kelime"
+              placeholder="örn: Submit, Continue, Login (büyük-küçük harf duyarlı)"
               value={formData.anahtar}
               onChange={(e) => setFormData({ ...formData, anahtar: e.target.value })}
               required
               size="lg"
-              className="font-mono"
-            />
-
-            <Textarea
-              label="Değer (Çeviri)"
-              placeholder="Çeviri metni"
-              value={formData.deger}
-              onChange={(e) => setFormData({ ...formData, deger: e.target.value })}
-              required
-              rows={3}
-              className="[&>label>span]:font-medium"
+              disabled={editMode}
+              helperText={
+                editMode
+                  ? 'Anahtar kelime düzenlenemez. Değiştirmek için silin ve yeniden oluşturun.'
+                  : 'Sadece kelime yazın, nokta koymayın! Frontend\'te kategori.anahtar şeklinde kullanılır'
+              }
             />
 
             <Input
               label="Kategori"
-              placeholder="common, home, hotel vb."
+              placeholder="örn: common, home, hotel"
               value={formData.kategori}
               onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
               size="lg"
+              helperText="Opsiyonel: Çevirileri gruplamak için kullanılır"
             />
 
             <Textarea
@@ -387,6 +370,33 @@ export default function CeviriYonetimiPage() {
               rows={2}
               className="[&>label>span]:font-medium"
             />
+
+            <div className="border-t pt-4 mt-4">
+              <Text className="font-semibold mb-3">Çeviriler</Text>
+              <div className="space-y-3">
+                {diller.map((dil) => (
+                  <Input
+                    key={dil.id}
+                    label={`${dil.ad} (${dil.kod.toUpperCase()})`}
+                    placeholder={`${dil.ad} çevirisi`}
+                    value={formData.ceviriler[dil.id] || ''}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        ceviriler: {
+                          ...formData.ceviriler,
+                          [dil.id]: e.target.value,
+                        },
+                      })
+                    }
+                    size="lg"
+                  />
+                ))}
+              </div>
+              <Text className="text-xs text-gray-500 mt-2">
+                * En az bir dil için çeviri girmeniz gerekir
+              </Text>
+            </div>
           </div>
 
           <div className="flex gap-3 mt-6">
@@ -395,7 +405,7 @@ export default function CeviriYonetimiPage() {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!formData.anahtar || !formData.deger || loading}
+              disabled={!formData.anahtar || loading}
               className="flex-1"
             >
               {loading ? 'İşleniyor...' : editMode ? 'Güncelle' : 'Ekle'}
@@ -406,4 +416,3 @@ export default function CeviriYonetimiPage() {
     </div>
   );
 }
-
